@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sudoku Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            text-align: center;
+            width: 500px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(9, 50px);
+            grid-template-rows: repeat(9, 50px);
+            gap: 2px;
+            margin: 20px auto;
+            background-color: #333;
+        }
+
+        .grid input {
+            width: 50px;
+            height: 50px;
+            text-align: center;
+            font-size: 20px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+
+        .grid input:disabled {
+            background-color: #e0e0e0;
+            color: #333;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button:disabled {
+            background-color: #aaa;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Sudoku Game</h1>
+        <div id="sudoku-grid" class="grid"></div>
+        <button id="generate-btn">Generate Game</button>
+        <button id="solve-btn">Solve Game</button>
+    </div>
+
+    <script>
+        let currentBoard = []; // Stores the current puzzle (what the user sees)
+        let solvedBoard = [];  // Stores the solved version of the board
+
+        // Function to generate an empty 9x9 Sudoku grid
+        function generateEmptyBoard() {
+            return Array.from({ length: 9 }, () => Array(9).fill(0));
+        }
+
+        // Check if a number can be placed in the cell (row, col)
+        function isValid(board, row, col, num) {
+            for (let i = 0; i < 9; i++) {
+                if (board[row][i] === num || board[i][col] === num) {
+                    return false;
+                }
+            }
+
+            let startRow = Math.floor(row / 3) * 3;
+            let startCol = Math.floor(col / 3) * 3;
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    if (board[startRow + i][startCol + j] === num) {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        // Function to generate a random Sudoku board (solved version)
+        function generateSudoku() {
+            let board = generateEmptyBoard(); // Start with an empty grid
+            fillBoard(board); // Fill the board with valid numbers using backtracking
+            return board; // Return the filled (solved) Sudoku board
+        }
+
+        // Function to fill the Sudoku board using a backtracking algorithm
+        function fillBoard(board) {
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    if (board[row][col] === 0) {
+                        let nums = shuffleArray([1, 2, 3, 4, 5, 6, 7, 8, 9]); // Shuffle numbers 1-9 to try in random order
+                        for (let num of nums) {
+                            if (isValid(board, row, col, num)) {
+                                board[row][col] = num; // If valid, place the number
+                                if (fillBoard(board)) {
+                                    return true; // If the board is filled correctly, return true
+                                }
+                                board[row][col] = 0; // Backtrack: undo the change
+                            }
+                        }
+                        return false; // If no valid number can be placed, backtrack further
+                    }
+                }
+            }
+            return true; // If the entire board is filled correctly, return true
+        }
+
+        // Function to shuffle an array randomly (Fisher-Yates shuffle)
+        function shuffleArray(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                let j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]]; // Swap elements
+            }
+            return arr;
+        }
+
+        // Function to generate a Sudoku puzzle by removing some numbers from the solved board
+        function generatePuzzle(board, emptyCells = 40) {
+            let puzzle = board.map(row => row.slice()); // Create a copy of the solved board
+            let count = 0;
+
+            // Remove random numbers to create the puzzle (empty cells)
+            while (count < emptyCells) {
+                let row = Math.floor(Math.random() * 9);
+                let col = Math.floor(Math.random() * 9);
+
+                if (puzzle[row][col] !== 0) {
+                    puzzle[row][col] = 0; // Set the cell to empty
+                    count++; // Increment the count of empty cells
+                }
+            }
+
+            return puzzle; // Return the puzzle with some empty cells
+        }
+
+        // Function to render the Sudoku board (display it on the web page)
+        function renderBoard(board) {
+            const grid = document.getElementById('sudoku-grid');
+            grid.innerHTML = ''; // Clear any existing board before rendering a new one
+
+            // Loop through each row and column to create input cells for the grid
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    const cell = document.createElement('input');
+                    cell.type = 'number';
+                    cell.min = 1;
+                    cell.max = 9;
+                    cell.value = board[row][col] === 0 ? '' : board[row][col]; // Display value or leave empty
+                    cell.disabled = board[row][col] !== 0; // Disable input for cells that are part of the puzzle
+                    cell.id = `cell-${row}-${col}`; // Set unique ID for each cell
+
+                    grid.appendChild(cell); // Add the input cell to the grid
+                }
+            }
+        }
+
+        // Function to solve the Sudoku puzzle using backtracking
+        function solveSudoku(board) {
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    if (board[row][col] === 0) { // If the cell is empty (0)
+                        for (let num = 1; num <= 9; num++) {
+                            if (isValid(board, row, col, num)) {
+                                board[row][col] = num; // Place the number if it's valid
+                                if (solveSudoku(board)) {
+                                    return true; // If the board is solved, return true
+                                }
+                                board[row][col] = 0; // Backtrack: undo the change
+                            }
+                        }
+                        return false; // If no number is valid, backtrack further
+                    }
+                }
+            }
+            return true; // If the entire board is solved, return true
+        }
+
+        // Function to generate a new Sudoku puzzle and render it
+        function generateGame() {
+            const newBoard = generateSudoku(); // Generate a new solved Sudoku board
+            solvedBoard = JSON.parse(JSON.stringify(newBoard)); // Store the solved board
+            const puzzle = generatePuzzle(newBoard, 40); // Generate a puzzle by removing some numbers
+            currentBoard = puzzle; // Set the current board to the generated puzzle
+            renderBoard(puzzle); // Render the puzzle on the webpage
+        }
+
+        // Function to solve the Sudoku puzzle and render the solved board
+        function solveGame() {
+            if (solveSudoku(currentBoard)) {
+                renderBoard(currentBoard); // Render the solved board if solution found
+            } else {
+                alert('No solution found!'); // Alert if no solution is found
+            }
+        }
+
+        // Event listeners for buttons
+        document.getElementById('generate-btn').addEventListener('click', generateGame);
+        document.getElementById('solve-btn').addEventListener('click', solveGame);
+
+        // Initialize the game with a puzzle when the page loads
+        document.addEventListener('DOMContentLoaded', generateGame);
+    </script>
+</body>
+</html>
